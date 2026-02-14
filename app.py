@@ -4,98 +4,93 @@ import os
 import json
 from google import genai
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import List
 
-# --- 1. PAGE SETUP ---
-st.set_page_config(page_title="AI Invoice Pipeline", page_icon="🧾")
-st.title("🧾 AI-Powered Invoice Extractor")
-st.write("Drag and drop a vendor invoice below. The AI will extract the data and flatten it for Excel/SQL analysis.")
+# --- 1. PAGE SETUP & STYLE (FinTech Theme) ---
+st.set_page_config(page_title="INKOS | Invoice Pipeline", page_icon="🧾", layout="wide")
 
-# Check for API Key
+# Custom CSS for a professional Banking/Finance aesthetic
+st.markdown("""
+    <style>
+    .main { background-color: #f8f9fa; } /* Clean, light finance background */
+    .stMetric { background-color: #ffffff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-left: 5px solid #0052cc; }
+    .stButton>button { background-color: #0052cc; color: white; border-radius: 8px; width: 100%; height: 3em; font-weight: bold; }
+    div[data-testid="stExpander"] { border: 1px solid #e0e0e0; background-color: white; }
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- 2. HEADER SECTION ---
+col_t, col_s = st.columns([3, 1])
+with col_t:
+    st.title("🧾 AI Financial Data Pipeline")
+    st.caption("INKOS Intelligence Systems | Supply Chain Automation")
+
+with col_s:
+    st.metric("Model", "Gemini 2.5 Flash", delta="Optimized")
+
+st.divider()
+
+# API Check
 if "GEMINI_API_KEY" not in os.environ:
-    st.error("⚠️ GEMINI_API_KEY environment variable is not set. Please set it in your terminal.")
+    st.error("⚠️ API Key missing in Streamlit Secrets.")
     st.stop()
 
 client = genai.Client()
 
-# --- 2. THE BLUEPRINT (Same as before!) ---
-class LineItem(BaseModel):
-    description: str = Field(description="The name or description of the product/service")
-    quantity: Optional[float] = Field(default=None, description="Number of units purchased")
-    unit_price: Optional[float] = Field(default=None, description="Price per single unit")
-    line_total: Optional[float] = Field(default=None, description="Total price for this specific line item")
+# --- 3. THE DATA BLUEPRINT ---
+class InvoiceItem(BaseModel):
+    description: str
+    quantity: float
+    unit_price: float
+    total_amount: float
 
 class InvoiceData(BaseModel):
-    vendor_name: str = Field(description="The name of the company issuing the invoice")
-    invoice_number: Optional[str] = Field(default=None, description="The unique invoice ID or number")
-    date_issued: Optional[str] = Field(default=None, description="The date the invoice was created")
-    items_purchased: List[LineItem] = Field(description="A list of all the individual items billed")
-    tax_amount: Optional[float] = Field(default=None, description="The total tax applied")
-    total_amount_due: Optional[float] = Field(default=None, description="The final total amount charged")
-    currency: Optional[str] = Field(default="USD", description="The currency used")
+    vendor_name: str
+    invoice_date: str
+    total_amount_due: float
+    currency: str
+    items: List[InvoiceItem]
 
-# --- 3. THE USER INTERFACE ---
-# Create a drag-and-drop file uploader on the website
-uploaded_file = st.file_uploader("Upload a PDF Invoice", type=["pdf"])
+# --- 4. WORKFLOW ---
+uploaded_file = st.file_uploader("Upload Vendor Invoice (PDF)", type=["pdf"])
 
-if uploaded_file is not None:
-    # Show a loading spinner while the AI thinks
-    with st.spinner("Uploading and extracting data with Gemini 2.5 Flash..."):
-        
-        # Streamlit holds files in memory. We temporarily save it to disk so Gemini can read it.
-        temp_pdf_path = "temp_upload.pdf"
-        with open(temp_pdf_path, "wb") as f:
+if uploaded_file:
+    # Sidebar for PDF Preview
+    with st.sidebar:
+        st.subheader("Document Preview")
+        st.info("The AI is scanning this document for financial data points.")
+    
+    if st.button("Process Financial Data"):
+        # Save temp file
+        temp_path = f"temp_{uploaded_file.name}"
+        with open(temp_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
             
-        # Send to AI
-        gemini_file = client.files.upload(file=temp_pdf_path)
+        # AI Logic
+        gemini_file = client.files.upload(file=temp_path)
         response = client.models.generate_content(
             model='gemini-2.5-flash',
-            contents=[gemini_file, "Extract the billing and financial information from this invoice. If a field is missing, leave it as null."],
-            config={
-                'response_mime_type': 'application/json',
-                'response_schema': InvoiceData,
-            },
+            contents=[gemini_file, "Extract all invoice data including line items."],
+            config={'response_mime_type': 'application/json', 'response_schema': InvoiceData}
         )
         
-        # --- 4. FLATTEN & DISPLAY DATA ---
-        data_dict = json.loads(response.text)
-        flattened_data = []
+        data = json.loads(response.text)
         
-        base_info = {
-            "Vendor": data_dict.get("vendor_name"),
-            "Invoice #": data_dict.get("invoice_number"),
-            "Date": data_dict.get("date_issued"),
-            "Tax": data_dict.get("tax_amount"),
-            "Total": data_dict.get("total_amount_due"),
-            "Currency": data_dict.get("currency")
-        }
-        
-        items = data_dict.get("items_purchased", [])
-        if len(items) > 0:
-            for item in items:
-                row = base_info.copy()
-                row.update(item)
-                flattened_data.append(row)
-        else:
-            row = base_info.copy()
-            row.update({"description": None, "quantity": None, "unit_price": None, "line_total": None})
-            flattened_data.append(row)
-            
-        # Clean up the temporary file
-        os.remove(temp_pdf_path)
-        
+        # --- 5. SMART VISUALS ---
         st.success("Extraction Complete!")
         
-        # Turn the data into a beautiful Pandas table and display it on the website!
-        df = pd.DataFrame(flattened_data)
+        # Summary Row
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Vendor", data['vendor_name'])
+        c2.metric("Total Amount", f"{data['total_amount_due']} {data['currency']}")
+        c3.metric("Line Items Found", len(data['items']))
+        
+        # Flatten and Display
+        df = pd.DataFrame(data['items'])
+        st.subheader("Standardized Data Output")
         st.dataframe(df, use_container_width=True)
         
-        # --- 5. DOWNLOAD BUTTON ---
         csv = df.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="⬇️ Download Data as CSV",
-            data=csv,
-            file_name="extracted_invoice.csv",
-            mime="text/csv",
-        )
+        st.download_button("⬇️ Export to ERP (CSV)", data=csv, file_name=f"processed_{data['vendor_name']}.csv")
+        
+        os.remove(temp_path)
