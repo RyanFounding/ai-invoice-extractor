@@ -6,34 +6,36 @@ from google import genai
 from pydantic import BaseModel, Field
 from typing import List
 
-# --- 1. PAGE SETUP & STYLE (Fixed Dark FinTech) ---
+# --- 1. PAGE SETUP & STYLE (Matching Industrial Grey) ---
 st.set_page_config(page_title="INKOS | Invoice Pipeline", page_icon="🧾", layout="wide")
 
 st.markdown("""
     <style>
-    /* Main background */
-    .stApp { background-color: #0f172a; } 
+    /* Dark Background matching your Industrial Tool */
+    .stApp { background-color: #0e1117; } 
     
-    /* The Metric Card (Fixing the white box) */
+    /* Uniform Grey Metric Cards */
     div[data-testid="stMetric"] {
-        background-color: #1e293b;
-        border: 1px solid #334155;
+        background-color: #1f2937;
+        border: 1px solid #374151;
         padding: 15px;
-        border-radius: 12px;
-        border-left: 5px solid #3b82f6; /* Financial Blue Accent */
+        border-radius: 10px;
     }
     
-    /* Text Colors */
-    h1, h2, h3, p, span { color: #f1f5f9 !important; }
+    /* Fixing text contrast */
+    h1, h2, h3, p, span, label { color: #ffffff !important; }
     
-    /* Button Styling */
+    /* Green Accent for success and buttons to match industrial theme */
     .stButton>button {
-        background-color: #3b82f6;
-        color: white;
+        background-color: #00ffa2;
+        color: #000000;
         border-radius: 8px;
         border: none;
         font-weight: bold;
     }
+    
+    /* Ensure Sidebar stays dark */
+    section[data-testid="stSidebar"] { background-color: #111827; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -112,4 +114,5 @@ if uploaded_file:
         st.download_button("⬇️ Export to ERP (CSV)", data=csv, file_name=f"processed_{data['vendor_name']}.csv")
         
         os.remove(temp_path)
+
 
