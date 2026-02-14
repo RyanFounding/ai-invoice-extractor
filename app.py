@@ -11,7 +11,7 @@ st.set_page_config(page_title="INKOS | Invoice Pipeline", page_icon="🧾", layo
 
 st.markdown("""
     <style>
-    /* Dark Background matching your Industrial Tool */
+    /* Dark Background matching Industrial Tool */
     .stApp { background-color: #0e1117; } 
     
     /* Uniform Grey Metric Cards */
@@ -22,10 +22,10 @@ st.markdown("""
         border-radius: 10px;
     }
     
-    /* Fixing text contrast */
+    /* Contrast Fixes */
     h1, h2, h3, p, span, label { color: #ffffff !important; }
     
-    /* Green Accent for success and buttons to match industrial theme */
+    /* Green Accent Button */
     .stButton>button {
         background-color: #00ffa2;
         color: #000000;
@@ -33,11 +33,21 @@ st.markdown("""
         border: none;
         font-weight: bold;
     }
-    
-    /* Ensure Sidebar stays dark */
-    section[data-testid="stSidebar"] { background-color: #111827; }
     </style>
     """, unsafe_allow_html=True)
+
+# --- 2. HEADER SECTION (Separated Metrics) ---
+col_title, col_stats = st.columns([4, 2])
+with col_title:
+    st.title("🧾 AI Financial Data Pipeline")
+    st.caption("INKOS Intelligence Systems | Supply Chain Automation")
+
+with col_stats:
+    m1, m2 = st.columns(2)
+    m1.metric("Engine", "Gemini 2.5")
+    m2.metric("Status", "Active", delta="Ready")
+
+st.divider()
 
 # --- 2. HEADER SECTION ---
 col_t, col_s = st.columns([3, 1])
@@ -114,5 +124,6 @@ if uploaded_file:
         st.download_button("⬇️ Export to ERP (CSV)", data=csv, file_name=f"processed_{data['vendor_name']}.csv")
         
         os.remove(temp_path)
+
 
 
