@@ -6,26 +6,19 @@ from google import genai
 from pydantic import BaseModel, Field
 from typing import List
 
-# --- 1. PAGE SETUP & STYLE (Matching Industrial Grey) ---
+# --- 1. PAGE SETUP & STYLE (Total Sync) ---
 st.set_page_config(page_title="INKOS | Invoice Pipeline", page_icon="🧾", layout="wide")
 
 st.markdown("""
     <style>
-    /* Dark Background matching Industrial Tool */
     .stApp { background-color: #0e1117; } 
-    
-    /* Uniform Grey Metric Cards */
     div[data-testid="stMetric"] {
         background-color: #1f2937;
         border: 1px solid #374151;
         padding: 15px;
         border-radius: 10px;
     }
-    
-    /* Contrast Fixes */
     h1, h2, h3, p, span, label { color: #ffffff !important; }
-    
-    /* Green Accent Button */
     .stButton>button {
         background-color: #00ffa2;
         color: #000000;
@@ -35,6 +28,19 @@ st.markdown("""
     }
     </style>
     """, unsafe_allow_html=True)
+
+# --- 2. HEADER SECTION (Fixes Duplication) ---
+col_title, col_stats = st.columns([4, 2])
+with col_title:
+    st.title("🧾 AI Financial Data Pipeline")
+    st.caption("INKOS Intelligence Systems | Supply Chain Automation")
+
+with col_stats:
+    m1, m2 = st.columns(2)
+    m1.metric("Engine", "Gemini 2.5")
+    m2.metric("Status", "Active", delta="Ready")
+
+st.divider()
 
 # --- 2. HEADER SECTION (Separated Metrics) ---
 col_title, col_stats = st.columns([4, 2])
@@ -124,6 +130,7 @@ if uploaded_file:
         st.download_button("⬇️ Export to ERP (CSV)", data=csv, file_name=f"processed_{data['vendor_name']}.csv")
         
         os.remove(temp_path)
+
 
 
 
