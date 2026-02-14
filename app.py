@@ -6,7 +6,7 @@ from google import genai
 from pydantic import BaseModel, Field
 from typing import List
 
-# --- 1. PAGE SETUP & STYLE (Total Sync with Industrial Theme) ---
+# --- 1. PAGE SETUP & STYLE (Perfect Sync) ---
 st.set_page_config(page_title="INKOS | Invoice Pipeline", page_icon="🧾", layout="wide")
 
 st.markdown("""
@@ -22,9 +22,6 @@ st.markdown("""
         border-radius: 10px;
     }
     
-    /* Fixing text contrast */
-    h1, h2, h3, p, span, label { color: #ffffff !important; }
-    
     /* Green Accent Button to match industrial theme */
     .stButton>button {
         background-color: #00ffa2;
@@ -39,11 +36,11 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. HEADER SECTION (Separated Metrics) ---
+# --- 2. HEADER SECTION (Instructional Text) ---
 col_title, col_stats = st.columns([4, 2])
 with col_title:
     st.title("🧾 AI Financial Data Pipeline")
-    st.caption("INKOS Intelligence Systems | Supply Chain Automation")
+    st.write("Drag and drop a vendor invoice (PDF) below to extract financial line items.")
 
 with col_stats:
     m1, m2 = st.columns(2)
@@ -53,15 +50,12 @@ with col_stats:
 st.divider()
 
 # --- 3. CORE LOGIC ---
-
-# Check for API Key in Streamlit Secrets
 if "GEMINI_API_KEY" not in os.environ:
     st.error("⚠️ GEMINI_API_KEY environment variable is not set in Secrets.")
     st.stop()
 
 client = genai.Client()
 
-# The Data Blueprint for Pydantic
 class InvoiceItem(BaseModel):
     description: str
     quantity: float
@@ -79,25 +73,20 @@ class InvoiceData(BaseModel):
 uploaded_file = st.file_uploader("Upload Vendor Invoice (PDF)", type=["pdf"])
 
 if uploaded_file:
-    # Sidebar for Document Preview status
     with st.sidebar:
         st.subheader("Document Status")
         st.success(f"File: {uploaded_file.name}")
         st.info("System ready for financial extraction.")
     
     if st.button("🚀 Process Financial Data"):
-        # Create a temporary file to send to Gemini
         temp_path = f"temp_{uploaded_file.name}"
         with open(temp_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
             
         try:
-            # Show a processing spinner
             with st.spinner("AI is analyzing financial line items..."):
-                # Upload to Gemini File API
                 gemini_file = client.files.upload(file=temp_path)
                 
-                # Generate Structured Content
                 response = client.models.generate_content(
                     model='gemini-2.5-flash',
                     contents=[gemini_file, "Extract all invoice details including every line item."],
@@ -112,18 +101,15 @@ if uploaded_file:
                 # --- 5. RESULTS DISPLAY ---
                 st.success("Extraction Successful")
                 
-                # Summary Summary Stats
                 c1, c2, c3 = st.columns(3)
                 c1.metric("Vendor Identified", data['vendor_name'])
                 c2.metric("Total Value", f"{data['total_amount_due']} {data['currency']}")
                 c3.metric("Line Items", len(data['items']))
                 
-                # Convert items list to DataFrame
                 df = pd.DataFrame(data['items'])
                 st.subheader("Standardized Line Item Database")
                 st.dataframe(df, use_container_width=True)
                 
-                # Download Button
                 csv = df.to_csv(index=False).encode('utf-8')
                 st.download_button(
                     label="⬇️ Export Data to CSV",
@@ -136,6 +122,5 @@ if uploaded_file:
             st.error(f"An error occurred: {e}")
             
         finally:
-            # Clean up temporary file
             if os.path.exists(temp_path):
                 os.remove(temp_path)
