@@ -2,8 +2,9 @@ import streamlit as st
 import pandas as pd
 import os
 import json
+import uuid
 from google import genai
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing import List
 
 # --- 1. PAGE SETUP & STYLE (Perfect Sync) ---
@@ -79,7 +80,9 @@ if uploaded_file:
         st.info("System ready for financial extraction.")
     
     if st.button("🚀 Process Financial Data"):
-        temp_path = f"temp_{uploaded_file.name}"
+        # Fix: Generate a safe, random filename so the Google SDK doesn't crash on foreign characters
+        temp_path = f"temp_{uuid.uuid4().hex}.pdf" 
+        
         with open(temp_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
             
@@ -110,6 +113,7 @@ if uploaded_file:
                 st.subheader("Standardized Line Item Database")
                 st.dataframe(df, use_container_width=True)
                 
+                # Fix: Encode to UTF-8-SIG so Excel handles Cyrillic/Umlauts perfectly
                 csv = df.to_csv(index=False).encode('utf-8-sig')
                 st.download_button(
                     label="⬇️ Export Data to CSV",
@@ -124,4 +128,3 @@ if uploaded_file:
         finally:
             if os.path.exists(temp_path):
                 os.remove(temp_path)
-
