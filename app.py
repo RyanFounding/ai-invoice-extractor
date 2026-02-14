@@ -110,7 +110,7 @@ if uploaded_file:
                 st.subheader("Standardized Line Item Database")
                 st.dataframe(df, use_container_width=True)
                 
-                csv = df.to_csv(index=False).encode('utf-8')
+                csv = df.to_csv(index=False).encode('utf-8-sig')
                 st.download_button(
                     label="⬇️ Export Data to CSV",
                     data=csv,
@@ -124,3 +124,4 @@ if uploaded_file:
         finally:
             if os.path.exists(temp_path):
                 os.remove(temp_path)
+
