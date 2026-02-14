@@ -6,16 +6,34 @@ from google import genai
 from pydantic import BaseModel, Field
 from typing import List
 
-# --- 1. PAGE SETUP & STYLE (FinTech Theme) ---
+# --- 1. PAGE SETUP & STYLE (Fixed Dark FinTech) ---
 st.set_page_config(page_title="INKOS | Invoice Pipeline", page_icon="🧾", layout="wide")
 
-# Custom CSS for a professional Banking/Finance aesthetic
 st.markdown("""
     <style>
-    .main { background-color: #f8f9fa; } /* Clean, light finance background */
-    .stMetric { background-color: #ffffff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-left: 5px solid #0052cc; }
-    .stButton>button { background-color: #0052cc; color: white; border-radius: 8px; width: 100%; height: 3em; font-weight: bold; }
-    div[data-testid="stExpander"] { border: 1px solid #e0e0e0; background-color: white; }
+    /* Main background */
+    .stApp { background-color: #0f172a; } 
+    
+    /* The Metric Card (Fixing the white box) */
+    div[data-testid="stMetric"] {
+        background-color: #1e293b;
+        border: 1px solid #334155;
+        padding: 15px;
+        border-radius: 12px;
+        border-left: 5px solid #3b82f6; /* Financial Blue Accent */
+    }
+    
+    /* Text Colors */
+    h1, h2, h3, p, span { color: #f1f5f9 !important; }
+    
+    /* Button Styling */
+    .stButton>button {
+        background-color: #3b82f6;
+        color: white;
+        border-radius: 8px;
+        border: none;
+        font-weight: bold;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -94,3 +112,4 @@ if uploaded_file:
         st.download_button("⬇️ Export to ERP (CSV)", data=csv, file_name=f"processed_{data['vendor_name']}.csv")
         
         os.remove(temp_path)
+
