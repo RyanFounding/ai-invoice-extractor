@@ -81,21 +81,23 @@ if uploaded_files:
     
     if st.button("🚀 Process Financial Data"):
         
+        # NEW: Initialize our Master List for all invoices
+        master_invoice_data = [] 
+        
         for uploaded_file in uploaded_files:
             st.markdown(f"### Processing: {uploaded_file.name}")
             
             temp_path = f"temp_{uuid.uuid4().hex}.pdf" 
-            gemini_file = None # Initialize empty for safe cleanup
+            gemini_file = None 
             
             with open(temp_path, "wb") as f:
                 f.write(uploaded_file.getbuffer())
                 
             try:
                 with st.spinner(f"AI is analyzing {uploaded_file.name}..."):
-                    # 1. Upload to Gemini Storage
+                    
                     gemini_file = client.files.upload(file=temp_path)
                     
-                    # 2. Extract Data
                     response = client.models.generate_content(
                         model='gemini-2.5-flash',
                         contents=[gemini_file, "Extract all invoice details including every line item."],
@@ -107,7 +109,16 @@ if uploaded_files:
                     
                     data = json.loads(response.text)
                     
-                    # --- 5. RESULTS DISPLAY (Per File) ---
+                    # NEW: Tag each line item with its parent invoice info so it makes sense in a Master CSV
+                    for item in data['items']:
+                        item_with_context = item.copy()
+                        item_with_context['Source_File'] = uploaded_file.name
+                        item_with_context['Vendor_Name'] = data['vendor_name']
+                        item_with_context['Invoice_Date'] = data['invoice_date']
+                        item_with_context['Currency'] = data['currency']
+                        master_invoice_data.append(item_with_context)
+                    
+                    # --- 5. INDIVIDUAL RESULTS DISPLAY ---
                     st.success(f"Extraction Successful for {uploaded_file.name}")
                     
                     c1, c2, c3 = st.columns(3)
@@ -120,7 +131,6 @@ if uploaded_files:
                     st.dataframe(df, use_container_width=True)
                     
                     csv = df.to_csv(index=False).encode('utf-8-sig')
-                    
                     st.download_button(
                         label=f"⬇️ Export {data['vendor_name']} Data",
                         data=csv,
@@ -135,13 +145,37 @@ if uploaded_files:
                 st.error(f"An error occurred while processing {uploaded_file.name}: {e}")
                 
             finally:
-                # 3. CLEANUP: Delete from Google's servers
                 if gemini_file:
                     try:
                         client.files.delete(name=gemini_file.name)
                     except Exception as cleanup_error:
                         st.sidebar.error(f"Failed to delete {gemini_file.name} from API: {cleanup_error}")
 
-                # 4. CLEANUP: Delete the local temp file
                 if os.path.exists(temp_path):
                     os.remove(temp_path)
+
+        # --- 6. MASTER DATABASE EXPORT ---
+        if master_invoice_data:
+            st.markdown("## 📊 Master Financial Database")
+            st.info(f"Successfully compiled {len(master_invoice_data)} total line items from {len(uploaded_files)} invoices.")
+            
+            master_df = pd.DataFrame(master_invoice_data)
+            
+            # Reorder columns so the context (Vendor, File, Date) comes before the line item details
+            context_cols = ['Source_File', 'Vendor_Name', 'Invoice_Date', 'Currency']
+            item_cols = [col for col in master_df.columns if col not in context_cols]
+            master_df = master_df[context_cols + item_cols]
+            
+            st.dataframe(master_df, use_container_width=True)
+            
+            master_csv = master_df.to_csv(index=False).encode('utf-8-sig')
+            
+            # Make the master download button extra prominent
+            st.download_button(
+                label="⬇️ DOWNLOAD MASTER BATCH CSV",
+                data=master_csv,
+                file_name="INKOS_Master_Financial_Data.csv",
+                mime="text/csv",
+                type="primary", # Gives the button a highlighted Streamlit styling
+                use_container_width=True
+            )
