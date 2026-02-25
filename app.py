@@ -41,7 +41,7 @@ st.markdown("""
 col_title, col_stats = st.columns([4, 2])
 with col_title:
     st.title("🧾 AI Financial Data Pipeline")
-    st.write("Drag and drop a vendor invoice (PDF) below to extract financial line items.")
+    st.write("Drag and drop vendor invoices (PDF) below to extract financial line items.")
 
 with col_stats:
     m1, m2 = st.columns(2)
@@ -71,60 +71,71 @@ class InvoiceData(BaseModel):
     items: List[InvoiceItem]
 
 # --- 4. FILE UPLOADER WORKFLOW ---
-uploaded_file = st.file_uploader("Upload Vendor Invoice (PDF)", type=["pdf"])
+# Added accept_multiple_files=True
+uploaded_files = st.file_uploader("Upload Vendor Invoices (PDF)", type=["pdf"], accept_multiple_files=True)
 
-if uploaded_file:
+if uploaded_files:
     with st.sidebar:
         st.subheader("Document Status")
-        st.success(f"File: {uploaded_file.name}")
-        st.info("System ready for financial extraction.")
+        st.success(f"Files queued: {len(uploaded_files)}")
+        st.info("System ready for batch financial extraction.")
     
     if st.button("🚀 Process Financial Data"):
-        # Fix: Generate a safe, random filename so the Google SDK doesn't crash on foreign characters
-        temp_path = f"temp_{uuid.uuid4().hex}.pdf" 
         
-        with open(temp_path, "wb") as f:
-            f.write(uploaded_file.getbuffer())
+        # Loop through the list of uploaded files
+        for uploaded_file in uploaded_files:
+            st.markdown(f"### Processing: {uploaded_file.name}")
             
-        try:
-            with st.spinner("AI is analyzing financial line items..."):
-                gemini_file = client.files.upload(file=temp_path)
+            # Generate a safe, random filename so the SDK doesn't crash on foreign characters
+            temp_path = f"temp_{uuid.uuid4().hex}.pdf" 
+            
+            with open(temp_path, "wb") as f:
+                f.write(uploaded_file.getbuffer())
                 
-                response = client.models.generate_content(
-                    model='gemini-2.5-flash',
-                    contents=[gemini_file, "Extract all invoice details including every line item."],
-                    config={
-                        'response_mime_type': 'application/json',
-                        'response_schema': InvoiceData,
-                    }
-                )
-                
-                data = json.loads(response.text)
-                
-                # --- 5. RESULTS DISPLAY ---
-                st.success("Extraction Successful")
-                
-                c1, c2, c3 = st.columns(3)
-                c1.metric("Vendor Identified", data['vendor_name'])
-                c2.metric("Total Value", f"{data['total_amount_due']} {data['currency']}")
-                c3.metric("Line Items", len(data['items']))
-                
-                df = pd.DataFrame(data['items'])
-                st.subheader("Standardized Line Item Database")
-                st.dataframe(df, use_container_width=True)
-                
-                # Fix: Encode to UTF-8-SIG so Excel handles Cyrillic/Umlauts perfectly
-                csv = df.to_csv(index=False).encode('utf-8-sig')
-                st.download_button(
-                    label="⬇️ Export Data to CSV",
-                    data=csv,
-                    file_name=f"INKOS_invoice_{data['vendor_name']}.csv",
-                    mime="text/csv"
-                )
+            try:
+                with st.spinner(f"AI is analyzing {uploaded_file.name}..."):
+                    gemini_file = client.files.upload(file=temp_path)
+                    
+                    response = client.models.generate_content(
+                        model='gemini-2.5-flash',
+                        contents=[gemini_file, "Extract all invoice details including every line item."],
+                        config={
+                            'response_mime_type': 'application/json',
+                            'response_schema': InvoiceData,
+                        }
+                    )
+                    
+                    data = json.loads(response.text)
+                    
+                    # --- 5. RESULTS DISPLAY (Per File) ---
+                    st.success(f"Extraction Successful for {uploaded_file.name}")
+                    
+                    c1, c2, c3 = st.columns(3)
+                    c1.metric("Vendor Identified", data['vendor_name'])
+                    c2.metric("Total Value", f"{data['total_amount_due']} {data['currency']}")
+                    c3.metric("Line Items", len(data['items']))
+                    
+                    df = pd.DataFrame(data['items'])
+                    st.subheader(f"Standardized Line Items: {data['vendor_name']}")
+                    st.dataframe(df, use_container_width=True)
+                    
+                    # Encode to UTF-8-SIG so Excel handles Cyrillic/Umlauts perfectly
+                    csv = df.to_csv(index=False).encode('utf-8-sig')
+                    
+                    # Ensure unique keys for buttons generated inside a loop
+                    st.download_button(
+                        label=f"⬇️ Export {data['vendor_name']} Data",
+                        data=csv,
+                        file_name=f"INKOS_invoice_{data['vendor_name']}.csv",
+                        mime="text/csv",
+                        key=f"download_{uuid.uuid4().hex}" 
+                    )
+                    
+                    st.divider() # Adds a nice visual break between invoices
 
-        except Exception as e:
-            st.error(f"An error occurred: {e}")
-            
-        finally:
-            if os.path.exists(temp_path):
-                os.remove(temp_path)
+            except Exception as e:
+                st.error(f"An error occurred while processing {uploaded_file.name}: {e}")
+                
+            finally:
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
