@@ -71,7 +71,6 @@ class InvoiceData(BaseModel):
     items: List[InvoiceItem]
 
 # --- 4. FILE UPLOADER WORKFLOW ---
-# Added accept_multiple_files=True
 uploaded_files = st.file_uploader("Upload Vendor Invoices (PDF)", type=["pdf"], accept_multiple_files=True)
 
 if uploaded_files:
@@ -82,20 +81,21 @@ if uploaded_files:
     
     if st.button("🚀 Process Financial Data"):
         
-        # Loop through the list of uploaded files
         for uploaded_file in uploaded_files:
             st.markdown(f"### Processing: {uploaded_file.name}")
             
-            # Generate a safe, random filename so the SDK doesn't crash on foreign characters
             temp_path = f"temp_{uuid.uuid4().hex}.pdf" 
+            gemini_file = None # Initialize empty for safe cleanup
             
             with open(temp_path, "wb") as f:
                 f.write(uploaded_file.getbuffer())
                 
             try:
                 with st.spinner(f"AI is analyzing {uploaded_file.name}..."):
+                    # 1. Upload to Gemini Storage
                     gemini_file = client.files.upload(file=temp_path)
                     
+                    # 2. Extract Data
                     response = client.models.generate_content(
                         model='gemini-2.5-flash',
                         contents=[gemini_file, "Extract all invoice details including every line item."],
@@ -119,10 +119,8 @@ if uploaded_files:
                     st.subheader(f"Standardized Line Items: {data['vendor_name']}")
                     st.dataframe(df, use_container_width=True)
                     
-                    # Encode to UTF-8-SIG so Excel handles Cyrillic/Umlauts perfectly
                     csv = df.to_csv(index=False).encode('utf-8-sig')
                     
-                    # Ensure unique keys for buttons generated inside a loop
                     st.download_button(
                         label=f"⬇️ Export {data['vendor_name']} Data",
                         data=csv,
@@ -131,11 +129,19 @@ if uploaded_files:
                         key=f"download_{uuid.uuid4().hex}" 
                     )
                     
-                    st.divider() # Adds a nice visual break between invoices
+                    st.divider()
 
             except Exception as e:
                 st.error(f"An error occurred while processing {uploaded_file.name}: {e}")
                 
             finally:
+                # 3. CLEANUP: Delete from Google's servers
+                if gemini_file:
+                    try:
+                        client.files.delete(name=gemini_file.name)
+                    except Exception as cleanup_error:
+                        st.sidebar.error(f"Failed to delete {gemini_file.name} from API: {cleanup_error}")
+
+                # 4. CLEANUP: Delete the local temp file
                 if os.path.exists(temp_path):
                     os.remove(temp_path)
