@@ -17,6 +17,11 @@ EXTRACTION_PROMPT = (
 MAX_PDF_BYTES = 20 * 1024 * 1024  # Gemini's limit for inline request data
 
 
+# JSON-schema responses (response_mime_type + response_schema) are only available on the
+# v1beta endpoint. Set it explicitly so a change in the SDK's default cannot break extraction.
+GEMINI_API_VERSION = "v1beta"
+
+
 class ExtractionError(RuntimeError):
     pass
 
@@ -34,8 +39,12 @@ class GeminiInvoiceExtractor:
 
     def __init__(self, api_key: str, model: str = "gemini-2.5-flash") -> None:
         from google import genai
+        from google.genai import types
 
-        self._client = genai.Client(api_key=api_key)
+        self._client = genai.Client(
+            api_key=api_key,
+            http_options=types.HttpOptions(api_version=GEMINI_API_VERSION),
+        )
         self._model = model
 
     def extract(self, pdf_bytes: bytes) -> InvoiceData:
