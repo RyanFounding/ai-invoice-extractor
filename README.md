@@ -66,7 +66,7 @@ app.py              Streamlit UI
 Requires Python 3.11 or newer.
 
 ```bash
-git clone https://github.com/RyanFounding/ai-invoice-extractor.git
+git clone https://github.com/insan-sll/ai-invoice-extractor.git
 cd ai-invoice-extractor
 python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
