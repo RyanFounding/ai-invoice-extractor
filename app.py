@@ -15,7 +15,7 @@ from invoice_pipeline.pipeline import (
     to_csv_bytes,
 )
 
-st.set_page_config(page_title="INKOS | Invoice Pipeline", layout="wide")
+st.set_page_config(page_title="Insan | Invoice Pipeline", layout="wide")
 st.title("Invoice Data Pipeline")
 st.write(
     "Upload vendor invoices as PDF. Each one is extracted into structured line items "

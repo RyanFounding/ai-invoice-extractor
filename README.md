@@ -2,7 +2,7 @@
 
 Turns vendor invoice PDFs into structured line-item data and checks that each invoice adds up before it's exported.
 
-Live demo: [inkos-invoices.streamlit.app](https://inkos-invoices.streamlit.app)
+Live demo: [insan-invoice-pipeline.streamlit.app](https://insan-invoice-pipeline.streamlit.app)
 
 ## Problem
 
